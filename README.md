@@ -6,13 +6,8 @@ This plugin allows you to create challenges that give players points by awards f
 #Setup
 
 
-    Copy the multi dir to /CTFd/plugins/
-
-    Copy templates/admin/challenges/multi-challenge to CTFd/themes/admin/static/js/templates/challenges/
-
-    Copy templates/admin/challenges/keys/Wrong to CTFd/themes/admin/static/js/templates/keys/
-
-    Copy templates/original/challenges/multi-challenge to CTFd/themes/original/static/js/templates/challenges/
+    Clone multianswer  from the dir /CTFd/plugins/
+    
 
 #Questions
 
