@@ -1,7 +1,7 @@
 from CTFd.plugins.keys import get_key_class, KEY_CLASSES
-from CTFd.plugins import challenges, keys, register_plugin_assets_directory
+from CTFd.plugins import challenges, register_plugin_assets_directory
 from CTFd.plugins.keys import BaseKey
-from flask import request, redirect, jsonify, url_for, session, abort, render_template
+from flask import request, redirect, jsonify, url_for, session, abort
 from CTFd.models import db, Challenges, WrongKeys, Keys, Teams, Awards
 from CTFd import utils
 import logging
@@ -168,12 +168,15 @@ def chal(chalid):
             'status': -1,
             'message': "You must be logged in to solve a challenge"
         })
+
+
 def admin_key_types():
     data = {}
     for class_id in KEY_CLASSES:
         data[class_id] = KEY_CLASSES.get(class_id).name
 
     return jsonify(data)
+
 
 def open_multihtml():
     with open('CTFd/plugins/multianswer/assets/multiteam.html') as multiteam:
