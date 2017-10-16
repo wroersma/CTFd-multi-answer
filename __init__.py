@@ -1,14 +1,11 @@
-from CTFd.plugins.keys import get_key_class, KEY_CLASSES
+from CTFd.plugins.keys import get_key_class, KEY_CLASSES, BaseKey
 from CTFd.plugins import challenges, register_plugin_assets_directory
-from CTFd.plugins.keys import BaseKey
 from flask import request, redirect, jsonify, url_for, session, abort
 from CTFd.models import db, Challenges, WrongKeys, Keys, Teams, Awards, Solves
 from CTFd import utils
 import logging
 import time
 from CTFd.plugins.challenges import get_chal_class
-import yara
-import os
 
 
 class MultiAnswer(challenges.BaseChallenge):
@@ -37,8 +34,7 @@ class MultiAnswer(challenges.BaseChallenge):
                     return True, 'Correct'
                 elif chal_key.key_type == "CTFdWrongKey":
                     return False, 'Failed Attempt'
-                return False, 'Incorrect'
-
+        return False, 'Incorrect'
     @staticmethod
     def solve(team, chal, request):
         """Solve the question and put results in the Awards DB"""
@@ -111,14 +107,19 @@ def chal(chalid):
         if utils.get_kpm(session['id']) > 10:
             if utils.ctftime():
                 chal_class.fail(team=team, chal=chal, request=request)
-            logger.warn("[{0}] {1} submitted {2} with kpm {3} [TOO FAST]".format(*data))
+            logger.warning("[{0}] {1} submitted {2} with kpm {3} [TOO FAST]".format(*data))
             # return '3' # Submitting too fast
             return jsonify({'status': 3, 'message': "You're submitting keys too fast. Slow down."})
 
-        solves = Solves.query.filter_by(teamid=session['id'], chalid=chalid).first()
-
+        solves = Awards.query.filter_by(teamid=session['id'], name=chalid,
+                                        description=request.form['key'].strip()).first()
+        try:
+            flag_value = solves.description
+        except AttributeError:
+            flag_value = ""
         # Challange not solved yet
-        if not solves:
+        if request.form['key'].strip() != flag_value or not solves:
+            chal = Challenges.query.filter_by(id=chalid).first_or_404()
             provided_key = request.form['key'].strip()
             saved_keys = Keys.query.filter_by(chal=chal.id).all()
 
@@ -175,35 +176,6 @@ def open_multihtml():
     return multiteam_string
 
 
-def admin_key_types(key_id=None):
-    if key_id is None:
-        data = {}
-        for class_id in KEY_CLASSES:
-            data[class_id] = KEY_CLASSES.get(class_id).name
-
-        return jsonify(data)
-    else:
-        key_class = get_key_class(key_id)
-        data = {
-            'id': key_class.id,
-            'name': key_class.name,
-            'templates': key_class.templates
-        }
-        return jsonify(data)
-
-
-def get_chal_class(class_id):
-    """
-    Utility function used to get the corresponding class from a class ID.
-
-    :param class_id: String representing the class ID
-    :return: Challenge class
-    """
-    cls = challenges.CHALLENGE_CLASSES.get(class_id)
-    if cls is None:
-        raise KeyError
-    return cls
-
 
 def load(app):
     """load overrides for multianswer plugin to work properly"""
@@ -212,5 +184,3 @@ def load(app):
     challenges.CHALLENGE_CLASSES["multianswer"] = MultiAnswer
     KEY_CLASSES["CTFdWrongKey"] = CTFdWrongKey
     app.view_functions['challenges.chal'] = chal
-    app.view_functions['admin.keys.admin_key_types'] = admin_key_types
-    app.view_functions['challenges.get_chal_class'] = get_chal_class
