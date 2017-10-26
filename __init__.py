@@ -14,14 +14,14 @@ class MultiAnswer(challenges.BaseChallenge):
     name = "multianswer"
 
     templates = {  # Handlebars templates used for each aspect of challenge editing & viewing
-        'create': '/plugins/multianswer/assets/multianswer-challenge-create.hbs',
-        'update': '/plugins/multianswer/assets/multianswer-challenge-update.hbs',
-        'modal': '/plugins/multianswer/assets/multianswer-challenge-modal.hbs',
+        'create': '/plugins/CTFd-multi-answer/assets/multianswer-challenge-create.hbs',
+        'update': '/plugins/CTFd-multi-answer/assets/multianswer-challenge-update.hbs',
+        'modal': '/plugins/CTFd-multi-answer/assets/multianswer-challenge-modal.hbs',
     }
     scripts = {  # Scripts that are loaded when a template is loaded
-        'create': '/plugins/multianswer/assets/multianswer-challenge-create.js',
-        'update': '/plugins/multianswer/assets/multianswer-challenge-update.js',
-        'modal': '/plugins/multianswer/assets/multianswer-challenge-modal.js',
+        'create': '/plugins/CTFd-multi-answer/assets/multianswer-challenge-create.js',
+        'update': '/plugins/CTFd-multi-answer/assets/multianswer-challenge-update.js',
+        'modal': '/plugins/CTFd-multi-answer/assets/multianswer-challenge-modal.js',
     }
 
     def attempt(chal, request):
@@ -73,8 +73,8 @@ class CTFdWrongKey(BaseKey):
     id = 2
     name = "CTFdWrongKey"
     templates = {  # Handlebars templates used for key editing & viewing
-        'create': '/plugins/multianswer/assets/CTFdWrongKey.hbs',
-        'update': '/plugins/multianswer/assets/edit-CTFdWrongKey-modal.hbs',
+        'create': '/plugins/CTFd-multi-answer/assets/CTFdWrongKey.hbs',
+        'update': '/plugins/CTFd-multi-answer/assets/edit-CTFdWrongKey-modal.hbs',
     }
 
     def compare(saved, provided):
@@ -169,17 +169,17 @@ def chal(chalid):
             'message': "You must be logged in to solve a challenge"
         })
 
+
 def open_multihtml():
-    with open('CTFd/plugins/multianswer/assets/multiteam.html') as multiteam:
+    with open('CTFd/plugins/CTFd-multi-answer/assets/multiteam.html') as multiteam:
         multiteam_string = str(multiteam.read())
     multiteam.close()
     return multiteam_string
 
 
-
 def load(app):
     """load overrides for multianswer plugin to work properly"""
-    register_plugin_assets_directory(app, base_path='/plugins/multianswer/assets/')
+    register_plugin_assets_directory(app, base_path='/plugins/CTFd-multi-answer/assets/')
     utils.override_template('team.html', open_multihtml())
     challenges.CHALLENGE_CLASSES["multianswer"] = MultiAnswer
     KEY_CLASSES["CTFdWrongKey"] = CTFdWrongKey
