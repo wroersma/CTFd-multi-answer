@@ -4,7 +4,7 @@
             <div class="container">
                 <div class="row">
                     <div class="col-md-12">
-                        <h3 class="text-center">Wrong-Answer Key</h3>
+                        <h3 class="text-center">Wrong Key</h3>
                     </div>
                 </div>
             </div>
@@ -14,8 +14,8 @@
         </div>
         <div class="modal-body">
             <form method="POST" action="{{ script_root }}/admin/keys/{{id}}">
-                <input type="text" id="key-data" class="form-control" name="key" value="{{key}}" placeholder="Enter wrong-answer key data">
-                <input type="hidden" id="key-type" name="key_type" value="wrong-answer">
+                <input type="text" id="key-data" class="form-control" name="key" value="{{key}}" placeholder="Enter wrong key data">
+                <input type="hidden" id="key-type" name="key_type" value="wrong">
                 <input type="hidden" id="key-id">
                 <hr>
                 <div class="form-group">

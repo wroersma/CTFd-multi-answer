@@ -52,7 +52,7 @@
 		<select class="custom-select" name="key_type[0]">
 			<option value="static">Static</option>
 			<option value="regex">Regex</option>
-            <option value="wrong-answer">Wrong-Answer</option>
+            <option value="wrong">Wrong</option>
 		</select>
 	</div>
 
@@ -92,7 +92,7 @@
 	</div>
 
 	<input type="hidden" value="{{ nonce }}" name="nonce" id="nonce">
-	<input type="hidden" value="multi-answer" name="chaltype" id="chaltype">
+	<input type="hidden" value="multianswer" name="chaltype" id="chaltype">
 
 	<div class="form-group">
 		<button class="btn btn-primary float-right create-challenge-submit" type="submit">Create</button>

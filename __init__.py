@@ -10,18 +10,18 @@ from CTFd.plugins.challenges import get_chal_class
 
 class CTFdMultiAnswerChallenge(challenges.BaseChallenge):
     """multi-answer allows right and wrong answers and leaves the question open"""
-    id = "multi-answer"
-    name = "multi-answer"
+    id = "multianswer"
+    name = "multianswer"
 
     templates = {  # Handlebars templates used for each aspect of challenge editing & viewing
-        'create': '/plugins/CTFd-multi-answer/assets/multi-answer-challenge-create.njk',
-        'update': '/plugins/CTFd-multi-answer/assets/multi-answer-challenge-update.njk',
-        'modal': '/plugins/CTFd-multi-answer/assets/multi-answer-challenge-modal.njk',
+        'create': '/plugins/CTFd-multi-answer/assets/multianswer-challenge-create.njk',
+        'update': '/plugins/CTFd-multi-answer/assets/multianswer-challenge-update.njk',
+        'modal': '/plugins/CTFd-multi-answer/assets/multianswer-challenge-modal.njk',
     }
     scripts = {  # Scripts that are loaded when a template is loaded
-        'create': '/plugins/CTFd-multi-answer/assets/multi-answer-challenge-create.js',
-        'update': '/plugins/CTFd-multi-answer/assets/multi-answer-challenge-update.js',
-        'modal': '/plugins/CTFd-multi-answer/assets/multi-answer-challenge-modal.js',
+        'create': '/plugins/CTFd-multi-answer/assets/multianswer-challenge-create.js',
+        'update': '/plugins/CTFd-multi-answer/assets/multianswer-challenge-update.js',
+        'modal': '/plugins/CTFd-multi-answer/assets/multianswer-challenge-modal.js',
     }
 
     @staticmethod
@@ -33,7 +33,7 @@ class CTFdMultiAnswerChallenge(challenges.BaseChallenge):
         :return:
         """
         # Create challenge
-        chal = Challenges(
+        chal = MultiAnswerChallenge(
             name=request.form['name'],
             description=request.form['description'],
             value=request.form['value'],
@@ -93,6 +93,7 @@ class CTFdMultiAnswerChallenge(challenges.BaseChallenge):
         :param challenge:
         :return: Challenge object, data dictionary to be returned to the user
         """
+        challenge = MultiAnswerChallenge.query.filter_by(id=challenge.id).first()
         data = {
             'id': challenge.id,
             'name': challenge.name,
@@ -145,9 +146,9 @@ class CTFdMultiAnswerChallenge(challenges.BaseChallenge):
         chal_keys = Keys.query.filter_by(chal=chal.id).all()
         for chal_key in chal_keys:
             if get_key_class(chal_key.type).compare(chal_key.flag, provided_key):
-                if chal_key.key_type == "static":
+                if chal_key.type == "static":
                     return True, 'Correct'
-                elif chal_key.key_type == "wrong-key":
+                elif chal_key.type == "wrong":
                     return False, 'Incorrect'
         return False, 'Incorrect'
 
@@ -200,10 +201,10 @@ class CTFdMultiAnswerChallenge(challenges.BaseChallenge):
 class CTFdWrongKey(BaseKey):
     """Wrong key to deduct points from the player"""
     id = 2
-    name = "wrong-key"
+    name = "wrong"
     templates = {  # Handlebars templates used for key editing & viewing
-        'create': '/plugins/CTFd-multi-answer/assets/create-wrong-answer-modal.njk',
-        'update': '/plugins/CTFd-multi-answer/assets/edit-wrong-answer-modal.njk',
+        'create': '/plugins/CTFd-multi-answer/assets/create-wrong-modal.njk',
+        'update': '/plugins/CTFd-multi-answer/assets/edit-wrong-modal.njk',
     }
 
     def compare(saved, provided):
@@ -216,7 +217,28 @@ class CTFdWrongKey(BaseKey):
         return result == 0
 
 
-def chalold(chalid):
+def open_multihtml():
+    with open('CTFd/plugins/CTFd-multi-answer/assets/multiteam.html') as multiteam:
+        multiteam_string = str(multiteam.read())
+    multiteam.close()
+    return multiteam_string
+
+
+class MultiAnswerChallenge(Challenges):
+    __mapper_args__ = {'polymorphic_identity': 'multianswer'}
+    id = db.Column(None, db.ForeignKey('challenges.id'), primary_key=True)
+    initial = db.Column(db.Integer)
+
+    def __init__(self, name, description, value, category, type='multianswer'):
+        self.name = name
+        self.description = description
+        self.value = value
+        self.initial = value
+        self.category = category
+        self.type = type
+
+
+def chal(chalid):
     """Custom chal function to override challenges.chal when multianswer is used"""
     if utils.ctf_ended() and not utils.view_after_ctf():
         abort(403)
@@ -299,17 +321,11 @@ def chalold(chalid):
         })
 
 
-def open_multihtml():
-    with open('CTFd/plugins/CTFd-multi-answer/assets/multiteam.html') as multiteam:
-        multiteam_string = str(multiteam.read())
-    multiteam.close()
-    return multiteam_string
-
-
 def load(app):
     """load overrides for multianswer plugin to work properly"""
+    app.db.create_all()
     register_plugin_assets_directory(app, base_path='/plugins/CTFd-multi-answer/assets/')
-    utils.override_template('team.html', open_multihtml())
-    challenges.CHALLENGE_CLASSES["multi-answer"] = CTFdMultiAnswerChallenge
-    KEY_CLASSES["wrong-key"] = CTFdWrongKey
+    #utils.override_template('team.html', open_multihtml())
+    challenges.CHALLENGE_CLASSES["multianswer"] = CTFdMultiAnswerChallenge
+    KEY_CLASSES["wrong"] = CTFdWrongKey
     #app.view_functions['challenges.chal'] = chal
