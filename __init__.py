@@ -1,53 +1,182 @@
 from CTFd.plugins.keys import get_key_class, KEY_CLASSES, BaseKey
 from CTFd.plugins import challenges, register_plugin_assets_directory
 from flask import request, redirect, jsonify, url_for, session, abort
-from CTFd.models import db, Challenges, WrongKeys, Keys, Teams, Awards, Solves
+from CTFd.models import db, Challenges, WrongKeys, Keys, Teams, Awards, Solves, Files, Tags
 from CTFd import utils
 import logging
 import time
 from CTFd.plugins.challenges import get_chal_class
 
 
-class MultiAnswer(challenges.BaseChallenge):
-    """multianswer allows right and wrong answers and leaves the question open"""
-    id = "multianswer"
-    name = "multianswer"
+class CTFdMultiAnswerChallenge(challenges.BaseChallenge):
+    """multi-answer allows right and wrong answers and leaves the question open"""
+    id = "multi-answer"
+    name = "multi-answer"
 
     templates = {  # Handlebars templates used for each aspect of challenge editing & viewing
-        'create': '/plugins/CTFd-multi-answer/assets/multianswer-challenge-create.hbs',
-        'update': '/plugins/CTFd-multi-answer/assets/multianswer-challenge-update.hbs',
-        'modal': '/plugins/CTFd-multi-answer/assets/multianswer-challenge-modal.hbs',
+        'create': '/plugins/CTFd-multi-answer/assets/multi-answer-challenge-create.njk',
+        'update': '/plugins/CTFd-multi-answer/assets/multi-answer-challenge-update.njk',
+        'modal': '/plugins/CTFd-multi-answer/assets/multi-answer-challenge-modal.njk',
     }
     scripts = {  # Scripts that are loaded when a template is loaded
-        'create': '/plugins/CTFd-multi-answer/assets/multianswer-challenge-create.js',
-        'update': '/plugins/CTFd-multi-answer/assets/multianswer-challenge-update.js',
-        'modal': '/plugins/CTFd-multi-answer/assets/multianswer-challenge-modal.js',
+        'create': '/plugins/CTFd-multi-answer/assets/multi-answer-challenge-create.js',
+        'update': '/plugins/CTFd-multi-answer/assets/multi-answer-challenge-update.js',
+        'modal': '/plugins/CTFd-multi-answer/assets/multi-answer-challenge-modal.js',
     }
 
+    @staticmethod
+    def create(request):
+        """
+        This method is used to process the challenge creation request.
+
+        :param request:
+        :return:
+        """
+        # Create challenge
+        chal = Challenges(
+            name=request.form['name'],
+            description=request.form['description'],
+            value=request.form['value'],
+            category=request.form['category'],
+            type=request.form['chaltype']
+        )
+
+        if 'hidden' in request.form:
+            chal.hidden = True
+        else:
+            chal.hidden = False
+
+        max_attempts = request.form.get('max_attempts')
+        if max_attempts and max_attempts.isdigit():
+            chal.max_attempts = int(max_attempts)
+
+        db.session.add(chal)
+        db.session.commit()
+
+        flag = Keys(chal.id, request.form['key'], request.form['key_type[0]'])
+        if request.form.get('keydata'):
+            flag.data = request.form.get('keydata')
+        db.session.add(flag)
+
+        db.session.commit()
+
+        files = request.files.getlist('files[]')
+        for f in files:
+            utils.upload_file(file=f, chalid=chal.id)
+
+        db.session.commit()
+
+    @staticmethod
+    def update(challenge, request):
+        """
+        This method is used to update the information associated with a challenge. This should be kept strictly to the
+        Challenges table and any child tables.
+
+        :param challenge:
+        :param request:
+        :return:
+        """
+        challenge.name = request.form['name']
+        challenge.description = request.form['description']
+        challenge.value = int(request.form.get('value', 0)) if request.form.get('value', 0) else 0
+        challenge.max_attempts = int(request.form.get('max_attempts', 0)) if request.form.get('max_attempts', 0) else 0
+        challenge.category = request.form['category']
+        challenge.hidden = 'hidden' in request.form
+        db.session.commit()
+        db.session.close()
+
+    @staticmethod
+    def read(challenge):
+        """
+        This method is in used to access the data of a challenge in a format processable by the front end.
+
+        :param challenge:
+        :return: Challenge object, data dictionary to be returned to the user
+        """
+        data = {
+            'id': challenge.id,
+            'name': challenge.name,
+            'value': challenge.value,
+            'description': challenge.description,
+            'category': challenge.category,
+            'hidden': challenge.hidden,
+            'max_attempts': challenge.max_attempts,
+            'type': challenge.type,
+            'type_data': {
+                'id': CTFdMultiAnswerChallenge.id,
+                'name': CTFdMultiAnswerChallenge.name,
+                'templates': CTFdMultiAnswerChallenge.templates,
+                'scripts': CTFdMultiAnswerChallenge.scripts,
+            }
+        }
+        return challenge, data
+
+    @staticmethod
+    def delete(challenge):
+        """
+        This method is used to delete the resources used by a challenge.
+
+        :param challenge:
+        :return:
+        """
+        # Needs to remove awards data as well
+        WrongKeys.query.filter_by(chalid=challenge.id).delete()
+        Solves.query.filter_by(chalid=challenge.id).delete()
+        Keys.query.filter_by(chal=challenge.id).delete()
+        files = Files.query.filter_by(chal=challenge.id).all()
+        for f in files:
+            utils.delete_file(f.id)
+        Files.query.filter_by(chal=challenge.id).delete()
+        Tags.query.filter_by(chal=challenge.id).delete()
+        Challenges.query.filter_by(id=challenge.id).delete()
+        db.session.commit()
+
     def attempt(chal, request):
-        """Attempt the user answer to see if it's right"""
+        """
+        This method is used to check whether a given input is right or wrong. It does not make any changes and should
+        return a boolean for correctness and a string to be shown to the user. It is also in charge of parsing the
+        user's input from the request itself.
+
+        :param chal: The Challenge object from the database
+        :param request: The request the user submitted
+        :return: (boolean, string)
+        """
         provided_key = request.form['key'].strip()
         chal_keys = Keys.query.filter_by(chal=chal.id).all()
         for chal_key in chal_keys:
-            if get_key_class(chal_key.key_type).compare(chal_key.flag, provided_key):
+            if get_key_class(chal_key.type).compare(chal_key.flag, provided_key):
                 if chal_key.key_type == "static":
                     return True, 'Correct'
-                elif chal_key.key_type == "CTFdWrongKey":
-                    return False, 'Failed Attempt'
+                elif chal_key.key_type == "wrong-key":
+                    return False, 'Incorrect'
         return False, 'Incorrect'
+
     @staticmethod
     def solve(team, chal, request):
-        """Solve the question and put results in the Awards DB"""
+        """
+        This method is used to insert Solves into the database in order to mark a challenge as solved.
+
+        :param team: The Team object from the database
+        :param chal: The Challenge object from the database
+        :param request: The request the user submitted
+        :return:
+        """
         provided_key = request.form['key'].strip()
-        solve = Awards(teamid=team.id, name=chal.id, value=chal.value)
-        solve.description = provided_key
+        solve = Solves(teamid=team.id, chalid=chal.id, ip=utils.get_ip(req=request), flag=provided_key)
         db.session.add(solve)
         db.session.commit()
         db.session.close()
 
     @staticmethod
     def fail(team, chal, request):
-        """Standard fail if the question is wrong record it"""
+        """
+        This method is used to insert WrongKeys into the database in order to mark an answer incorrect.
+
+        :param team: The Team object from the database
+        :param chal: The Challenge object from the database
+        :param request: The request the user submitted
+        :return:
+        """
         provided_key = request.form['key'].strip()
         wrong = WrongKeys(teamid=team.id, chalid=chal.id, ip=utils.get_ip(request), flag=provided_key)
         db.session.add(wrong)
@@ -71,10 +200,10 @@ class MultiAnswer(challenges.BaseChallenge):
 class CTFdWrongKey(BaseKey):
     """Wrong key to deduct points from the player"""
     id = 2
-    name = "CTFdWrongKey"
+    name = "wrong-key"
     templates = {  # Handlebars templates used for key editing & viewing
-        'create': '/plugins/CTFd-multi-answer/assets/CTFdWrongKey.hbs',
-        'update': '/plugins/CTFd-multi-answer/assets/edit-CTFdWrongKey-modal.hbs',
+        'create': '/plugins/CTFd-multi-answer/assets/create-wrong-answer-modal.njk',
+        'update': '/plugins/CTFd-multi-answer/assets/edit-wrong-answer-modal.njk',
     }
 
     def compare(saved, provided):
@@ -87,7 +216,7 @@ class CTFdWrongKey(BaseKey):
         return result == 0
 
 
-def chal(chalid):
+def chalold(chalid):
     """Custom chal function to override challenges.chal when multianswer is used"""
     if utils.ctf_ended() and not utils.view_after_ctf():
         abort(403)
@@ -181,6 +310,6 @@ def load(app):
     """load overrides for multianswer plugin to work properly"""
     register_plugin_assets_directory(app, base_path='/plugins/CTFd-multi-answer/assets/')
     utils.override_template('team.html', open_multihtml())
-    challenges.CHALLENGE_CLASSES["multianswer"] = MultiAnswer
-    KEY_CLASSES["CTFdWrongKey"] = CTFdWrongKey
-    app.view_functions['challenges.chal'] = chal
+    challenges.CHALLENGE_CLASSES["multi-answer"] = CTFdMultiAnswerChallenge
+    KEY_CLASSES["wrong-key"] = CTFdWrongKey
+    #app.view_functions['challenges.chal'] = chal
