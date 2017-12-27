@@ -15,6 +15,7 @@
         <div class="modal-body">
             <form method="POST" action="{{ script_root }}/admin/keys/{{id}}">
                 <input type="text" id="key-data" class="form-control" name="key" value="{{key}}" placeholder="Enter wrong key data">
+                <input type="text" id="key-value" class="form-control" name="data" value="{{data}}" placeholder="Enter wrong point value">
                 <input type="hidden" id="key-type" name="key_type" value="wrong">
                 <input type="hidden" id="key-id">
                 <hr>

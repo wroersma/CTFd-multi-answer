@@ -130,6 +130,7 @@ class CTFdMultiAnswerChallenge(challenges.BaseChallenge):
         Challenges.query.filter_by(id=challenge.id).delete()
         db.session.commit()
 
+    @staticmethod
     def attempt(chal, request):
         """
         This method is used to check whether a given input is right or wrong. It does not make any changes and should
@@ -185,17 +186,10 @@ class CTFdMultiAnswerChallenge(challenges.BaseChallenge):
 
     @staticmethod
     def solve(team, chal, request):
-        """
-        This method is used to insert Solves into the database in order to mark a challenge as solved.
-
-        :param team: The Team object from the database
-        :param chal: The Challenge object from the database
-        :param request: The request the user submitted
-        :return:
-        """
-
+        """This method is not used"""
+    @staticmethod
     def fail(team, chal, request):
-        """Fail if the question is wrong record it and record the wrong answer to deduct points"""
+        """This method is not used"""
 
 
 class CTFdWrongKey(BaseKey):
@@ -207,6 +201,7 @@ class CTFdWrongKey(BaseKey):
         'update': '/plugins/CTFd-multi-answer/assets/edit-wrong-modal.njk',
     }
 
+    @staticmethod
     def compare(saved, provided):
         """Compare the saved and provided keys"""
         if len(saved) != len(provided):
@@ -226,6 +221,7 @@ class CTFdCorrectKey(BaseKey):
         'update': '/plugins/CTFd-multi-answer/assets/edit-correct-modal.njk',
     }
 
+    @staticmethod
     def compare(saved, provided):
         """Compare the saved and provided keys"""
         if len(saved) != len(provided):
