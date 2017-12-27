@@ -144,7 +144,7 @@ class CTFdMultiAnswerChallenge(challenges.BaseChallenge):
         chal_keys = Keys.query.filter_by(chal=chal.id).all()
         for chal_key in chal_keys:
             if get_key_class(chal_key.type).compare(chal_key.flag, provided_key):
-                if chal_key.type == "static":
+                if chal_key.type == "correct":
                     solves = Awards.query.filter_by(teamid=session['id'], name=chal.id,
                                                     description=request.form['key'].strip()).first()
                     try:
@@ -159,6 +159,7 @@ class CTFdMultiAnswerChallenge(challenges.BaseChallenge):
                         db.session.commit()
                         db.session.close()
                     return True, 'Correct'
+                    # TODO Add description function call to the end of "Correct" in return
                 elif chal_key.type == "wrong":
                     solves = Awards.query.filter_by(teamid=session['id'], name=chal.id,
                                                     description=request.form['key'].strip()).first()
@@ -216,6 +217,25 @@ class CTFdWrongKey(BaseKey):
         return result == 0
 
 
+class CTFdCorrectKey(BaseKey):
+    """Wrong key to deduct points from the player"""
+    id = 3
+    name = "correct"
+    templates = {  # Handlebars templates used for key editing & viewing
+        'create': '/plugins/CTFd-multi-answer/assets/create-correct-modal.njk',
+        'update': '/plugins/CTFd-multi-answer/assets/edit-correct-modal.njk',
+    }
+
+    def compare(saved, provided):
+        """Compare the saved and provided keys"""
+        if len(saved) != len(provided):
+            return False
+        result = 0
+        for x, y in zip(saved, provided):
+            result |= ord(x) ^ ord(y)
+        return result == 0
+
+
 class MultiAnswerChallenge(Challenges):
     __mapper_args__ = {'polymorphic_identity': 'multianswer'}
     id = db.Column(None, db.ForeignKey('challenges.id'), primary_key=True)
@@ -236,3 +256,4 @@ def load(app):
     register_plugin_assets_directory(app, base_path='/plugins/CTFd-multi-answer/assets/')
     challenges.CHALLENGE_CLASSES["multianswer"] = CTFdMultiAnswerChallenge
     KEY_CLASSES["wrong"] = CTFdWrongKey
+    KEY_CLASSES["correct"] = CTFdCorrectKey
