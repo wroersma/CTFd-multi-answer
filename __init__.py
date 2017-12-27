@@ -132,7 +132,7 @@ class CTFdMultiAnswerChallenge(challenges.BaseChallenge):
         Challenges.query.filter_by(id=challenge.id).delete()
         db.session.commit()
 
-    def attempt(chal, request, team, chalid):
+    def attempt(chal, request):
         """
         This method is used to check whether a given input is right or wrong. It does not make any changes and should
         return a boolean for correctness and a string to be shown to the user. It is also in charge of parsing the
@@ -147,7 +147,7 @@ class CTFdMultiAnswerChallenge(challenges.BaseChallenge):
         for chal_key in chal_keys:
             if get_key_class(chal_key.type).compare(chal_key.flag, provided_key):
                 if chal_key.type == "static":
-                    solves = Awards.query.filter_by(teamid=session['id'], name=chalid,
+                    solves = Awards.query.filter_by(teamid=session['id'], name=chal.id,
                                                     description=request.form['key'].strip()).first()
                     try:
                         flag_value = solves.description
@@ -155,14 +155,14 @@ class CTFdMultiAnswerChallenge(challenges.BaseChallenge):
                         flag_value = ""
                     # Challange not solved yet
                     if request.form['key'].strip() != flag_value or not solves:
-                        solve = Awards(teamid=team.id, name=chal.id, value=chal.value)
+                        solve = Awards(teamid=session['id'], name=chal.id, value=chal.value)
                         solve.description = provided_key
                         db.session.add(solve)
                         db.session.commit()
                         db.session.close()
                     return False, 'Incorrect'
                 elif chal_key.type == "wrong":
-                    solves = Awards.query.filter_by(teamid=session['id'], name=chalid,
+                    solves = Awards.query.filter_by(teamid=session['id'], name=chal.id,
                                                     description=request.form['key'].strip()).first()
                     try:
                         flag_value = solves.description
@@ -172,8 +172,8 @@ class CTFdMultiAnswerChallenge(challenges.BaseChallenge):
                     if request.form['key'].strip() != flag_value or not solves:
                         wrong_value = 0
                         wrong_value -= chal.value
-                        wrong = WrongKeys(teamid=team.id, chalid=chal.id, ip=utils.get_ip(request), flag=provided_key)
-                        solve = Awards(teamid=team.id, name=chal.id, value=wrong_value)
+                        wrong = WrongKeys(teamid=session['id'], chalid=chal.id, ip=utils.get_ip(request), flag=provided_key)
+                        solve = Awards(teamid=session['id'], name=chal.id, value=wrong_value)
                         solve.description = provided_key
                         db.session.add(wrong)
                         db.session.add(solve)
@@ -192,11 +192,6 @@ class CTFdMultiAnswerChallenge(challenges.BaseChallenge):
         :param request: The request the user submitted
         :return:
         """
-        provided_key = request.form['key'].strip()
-        solve = Solves(teamid=team.id, chalid=chal.id, ip=utils.get_ip(req=request), flag=provided_key)
-        db.session.add(solve)
-        db.session.commit()
-        db.session.close()
 
     @staticmethod
     def fail(team, chal, request):
