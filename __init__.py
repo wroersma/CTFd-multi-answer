@@ -1,11 +1,9 @@
 from CTFd.plugins.keys import get_key_class, KEY_CLASSES, BaseKey
 from CTFd.plugins import challenges, register_plugin_assets_directory
-from flask import request, redirect, jsonify, url_for, session, abort
-from CTFd.models import db, Challenges, WrongKeys, Keys, Teams, Awards, Solves, Files, Tags
+from flask import session
+from CTFd.models import db, Challenges, WrongKeys, Keys, Awards, Solves, Files, Tags
 from CTFd import utils
 import logging
-import time
-from CTFd.plugins.challenges import get_chal_class
 
 
 class CTFdMultiAnswerChallenge(challenges.BaseChallenge):
@@ -154,13 +152,13 @@ class CTFdMultiAnswerChallenge(challenges.BaseChallenge):
                     except AttributeError:
                         flag_value = ""
                     # Challange not solved yet
-                    if request.form['key'].strip() != flag_value or not solves:
+                    if provided_key != flag_value or not solves:
                         solve = Awards(teamid=session['id'], name=chal.id, value=chal.value)
                         solve.description = provided_key
                         db.session.add(solve)
                         db.session.commit()
                         db.session.close()
-                    return False, 'Incorrect'
+                    return True, 'Correct'
                 elif chal_key.type == "wrong":
                     solves = Awards.query.filter_by(teamid=session['id'], name=chal.id,
                                                     description=request.form['key'].strip()).first()
@@ -169,17 +167,18 @@ class CTFdMultiAnswerChallenge(challenges.BaseChallenge):
                     except AttributeError:
                         flag_value = ""
                     # Challange not solved yet
-                    if request.form['key'].strip() != flag_value or not solves:
+                    if provided_key != flag_value or not solves:
                         wrong_value = 0
                         wrong_value -= chal.value
-                        wrong = WrongKeys(teamid=session['id'], chalid=chal.id, ip=utils.get_ip(request), flag=provided_key)
+                        wrong = WrongKeys(teamid=session['id'], chalid=chal.id, ip=utils.get_ip(request),
+                                          flag=provided_key)
                         solve = Awards(teamid=session['id'], name=chal.id, value=wrong_value)
                         solve.description = provided_key
                         db.session.add(wrong)
                         db.session.add(solve)
                         db.session.commit()
                         db.session.close()
-                    return False, 'Incorrect'
+                    return False, 'Error Network DNS just stopped working'
         return False, 'Incorrect'
 
     @staticmethod
@@ -193,34 +192,8 @@ class CTFdMultiAnswerChallenge(challenges.BaseChallenge):
         :return:
         """
 
-    @staticmethod
     def fail(team, chal, request):
-        """
-        This method is used to insert WrongKeys into the database in order to mark an answer incorrect.
-
-        :param team: The Team object from the database
-        :param chal: The Challenge object from the database
-        :param request: The request the user submitted
-        :return:
-        """
-        provided_key = request.form['key'].strip()
-        wrong = WrongKeys(teamid=team.id, chalid=chal.id, ip=utils.get_ip(request), flag=provided_key)
-        db.session.add(wrong)
-        db.session.commit()
-        db.session.close()
-
-    def wrong(team, chal, request):
         """Fail if the question is wrong record it and record the wrong answer to deduct points"""
-        provided_key = request.form['key'].strip()
-        wrong_value = 0
-        wrong_value -= chal.value
-        wrong = WrongKeys(teamid=team.id, chalid=chal.id, ip=utils.get_ip(request), flag=provided_key)
-        solve = Awards(teamid=team.id, name=chal.id, value=wrong_value)
-        solve.description = provided_key
-        db.session.add(wrong)
-        db.session.add(solve)
-        db.session.commit()
-        db.session.close()
 
 
 class CTFdWrongKey(BaseKey):
@@ -242,13 +215,6 @@ class CTFdWrongKey(BaseKey):
         return result == 0
 
 
-def open_multihtml():
-    with open('CTFd/plugins/CTFd-multi-answer/assets/multiteam.html') as multiteam:
-        multiteam_string = str(multiteam.read())
-    multiteam.close()
-    return multiteam_string
-
-
 class MultiAnswerChallenge(Challenges):
     __mapper_args__ = {'polymorphic_identity': 'multianswer'}
     id = db.Column(None, db.ForeignKey('challenges.id'), primary_key=True)
@@ -267,7 +233,5 @@ def load(app):
     """load overrides for multianswer plugin to work properly"""
     app.db.create_all()
     register_plugin_assets_directory(app, base_path='/plugins/CTFd-multi-answer/assets/')
-    utils.override_template('team.html', open_multihtml())
     challenges.CHALLENGE_CLASSES["multianswer"] = CTFdMultiAnswerChallenge
     KEY_CLASSES["wrong"] = CTFdWrongKey
-    #app.view_functions['challenges.chal'] = chal
