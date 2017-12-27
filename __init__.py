@@ -151,7 +151,7 @@ class CTFdMultiAnswerChallenge(challenges.BaseChallenge):
                         flag_value = solves.description
                     except AttributeError:
                         flag_value = ""
-                    # Challange not solved yet
+                    # Challenge not solved yet
                     if provided_key != flag_value or not solves:
                         solve = Awards(teamid=session['id'], name=chal.id, value=chal.value)
                         solve.description = provided_key
@@ -166,7 +166,7 @@ class CTFdMultiAnswerChallenge(challenges.BaseChallenge):
                         flag_value = solves.description
                     except AttributeError:
                         flag_value = ""
-                    # Challange not solved yet
+                    # Challenge not solved yet
                     if provided_key != flag_value or not solves:
                         wrong_value = 0
                         wrong_value -= chal.value
@@ -178,7 +178,8 @@ class CTFdMultiAnswerChallenge(challenges.BaseChallenge):
                         db.session.add(solve)
                         db.session.commit()
                         db.session.close()
-                    return False, 'Error Network DNS just stopped working'
+                    return False, 'Error'
+                    # TODO Add description function call to the end of "Error" in return
         return False, 'Incorrect'
 
     @staticmethod
