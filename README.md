@@ -3,13 +3,14 @@
 This plugin allows you to create challenges that give players points by awards for each right answer. It also also you to set wrong answers in which they will lose points for. 
 
 
-#Setup
+# Setup
 
 
     Clone multianswer  from the dir /CTFd/plugins/
     
 
-#How to use
+# How to use
+
 Go to challenges to create a challenge 
 Create a new challenge 
 - from the drop down select multianswer
@@ -20,6 +21,6 @@ For correct answers use the the "correct" key
 For wrong answers use the "wrong" key
 
 
-#Questions
+# Questions
 
 If you have any questions please contact Wyatt Roersma(wyattroersma@wyattroersma.com)
